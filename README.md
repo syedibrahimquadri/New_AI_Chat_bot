@@ -82,6 +82,6 @@ The chat page in `web/` is hosted on Vercel, and it sends `/api/*` requests to t
 
 - Vercel: import the repo and set Root Directory to `web`.
 - Render: create a Blueprint from the repo and set `GROQ_API_KEY`.
-- If the Render URL is not `https://fundfacts-api.onrender.com`, update `web/vercel.json`.
+- If the Render URL is not `https://fundfacts-api-heax.onrender.com`, update `web/vercel.json`.
 
 Run locally with `uvicorn backend.main:app --port 8000`, then open http://localhost:8000.
