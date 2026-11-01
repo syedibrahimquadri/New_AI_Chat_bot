@@ -75,3 +75,13 @@ python -m tests.run_accuracy     # 144 fact questions; about 15 minutes and uses
 ```
 
 Scraped data and the vector index are not committed. Run the pipeline after cloning.
+
+## Vercel deployment
+
+The chat page in `web/` is hosted on Vercel, and it sends `/api/*` requests to the Python API in `backend/`, hosted on Render (`render.yaml`).
+
+- Vercel: import the repo and set Root Directory to `web`.
+- Render: create a Blueprint from the repo and set `GROQ_API_KEY`.
+- If the Render URL is not `https://fundfacts-api.onrender.com`, update `web/vercel.json`.
+
+Run locally with `uvicorn backend.main:app --port 8000`, then open http://localhost:8000.

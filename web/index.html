@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FundFacts</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root { --surface:#faf8ff; --low:#f2f3ff; --mid:#eaedff; --ink:#131b2e; --muted:#3c4a43;
+  --primary:#006c4f; --accent:#00b386; --link:#005ac2; --err:#ba1a1a; }
+* { box-sizing:border-box; }
+html, body { height:100%; margin:0; }
+body { font-family:Inter,sans-serif; background:var(--surface); color:var(--ink); display:flex; }
+button { font:inherit; color:inherit; cursor:pointer; border:0; }
+button:focus-visible, textarea:focus-visible, a:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+
+.side { width:300px; flex:none; background:var(--low); padding:1.1rem 1.1rem; overflow-y:auto; display:flex; flex-direction:column; gap:.45rem; }
+.brand { display:flex; gap:.6rem; align-items:center; margin-bottom:.5rem; }
+.brand img { width:42px; height:42px; }
+.brand b { display:block; font:700 1.15rem/1.2 'Plus Jakarta Sans',sans-serif; color:var(--primary); }
+.brand span { font-size:.72rem; color:var(--muted); }
+.item { background:#fff; border-radius:999px; padding:.42rem .8rem; text-align:left; font-size:.82rem; transition:background .15s, color .15s, transform .15s; }
+.item:hover { background:var(--mid); color:var(--primary); transform:translateY(-1px); }
+.stats { display:flex; gap:.5rem; margin:.2rem 0; }
+.stats div { flex:1; background:#fff; border-radius:.8rem; padding:.55rem .6rem; font-size:.72rem; color:var(--muted); }
+.stats b { display:block; font:700 1.35rem 'Plus Jakarta Sans',sans-serif; color:var(--primary); }
+.title { font-size:.68rem; font-weight:600; letter-spacing:.06em; color:var(--muted); margin:.6rem 0 .05rem; }
+.note { font-size:.78rem; line-height:1.7; }
+
+.main { flex:1; min-width:0; height:100%; display:flex; flex-direction:column; }
+.scroll { flex:1; overflow-y:auto; padding:1.5rem 1rem 1rem; scroll-behavior:smooth; }
+.column { max-width:768px; margin:0 auto; display:flex; flex-direction:column; gap:1rem; }
+.hero { text-align:center; padding:1rem 0 .25rem; }
+.hero h1 { font:700 2.1rem/1.2 'Plus Jakarta Sans',sans-serif; letter-spacing:-.02em; margin:0; }
+.hero p { color:var(--muted); margin:.45rem 0 1rem; font-size:.95rem; }
+.suggest { display:block; width:100%; background:var(--low); border-radius:14px; padding:.7rem 1rem; margin-top:.6rem; font-size:.88rem; transition:background .15s; }
+.suggest:hover { background:var(--mid); color:var(--primary); }
+.banner { background:linear-gradient(90deg,#e2e7ff,#d8f3f0); border-radius:1rem; padding:.8rem 1.1rem; font-size:.84rem; line-height:1.5; }
+.banner b { font-weight:600; }
+.msg { background:#fff; border-radius:1rem; padding:.85rem 1rem; box-shadow:0 2px 10px #131b2e0a; animation:rise .22s ease-out; }
+.msg.user { background:#e4f6ef; align-self:flex-end; max-width:85%; }
+.label { font-weight:600; font-size:.8rem; margin-bottom:.2rem; }
+.label.answer { color:var(--primary); } .label.refusal, .label.error { color:var(--err); } .label.not_found { color:#004395; }
+.text { line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; }
+.source { display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:.5rem; background:var(--low); border-radius:.6rem; padding:.3rem .7rem; font-size:.8rem; }
+.source a { color:var(--link); text-decoration:none; }
+.updated { color:var(--muted); font-size:.74rem; margin-top:.35rem; }
+.dots span { display:inline-block; width:7px; height:7px; margin-right:4px; border-radius:50%; background:var(--accent); animation:pulse 1s infinite; }
+.dots span:nth-child(2) { animation-delay:.15s; } .dots span:nth-child(3) { animation-delay:.3s; }
+.wake { color:var(--muted); font-size:.78rem; margin-top:.4rem; }
+
+.bar { padding:.6rem 1rem 1rem; }
+form { max-width:768px; margin:0 auto; display:flex; align-items:flex-end; gap:.5rem; background:#fff; border-radius:1rem; padding:.55rem .6rem .55rem 1rem; box-shadow:0 8px 24px #006c4f1f; }
+textarea { flex:1; border:0; resize:none; font:inherit; font-size:.95rem; line-height:1.4; max-height:7rem; padding:.35rem 0; background:transparent; color:var(--ink); }
+textarea:focus { outline:none; }
+form:focus-within { box-shadow:0 0 0 2px var(--primary), 0 8px 24px #006c4f1f; }
+.send { width:38px; height:38px; flex:none; border-radius:.7rem; background:var(--primary); color:#fff; font-size:1.05rem; }
+.send:disabled { background:var(--mid); color:#8a8fa8; cursor:default; }
+.menu, .scrim { display:none; }
+
+@keyframes rise { from { opacity:0; transform:translateY(6px);} to { opacity:1; transform:none;} }
+@keyframes pulse { 50% { opacity:.3; transform:scale(.8);} }
+@media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
+@media (max-width:760px) {
+  .side { position:fixed; inset:0 auto 0 0; z-index:20; transform:translateX(-100%); transition:transform .2s; }
+  body.open .side { transform:none; }
+  body.open .scrim { display:block; position:fixed; inset:0; z-index:15; background:#131b2e66; }
+  .menu { display:block; margin:.6rem 0 0 .75rem; width:40px; height:40px; border-radius:.7rem; background:var(--low); font-size:1.1rem; }
+  .hero h1 { font-size:1.6rem; }
+  .scroll { padding-top:.5rem; }
+}
+</style>
+</head>
+<body>
+<aside class="side" aria-label="Topics">
+  <div class="brand"><img src="logo.svg" alt="FundFacts logo"><div><b>FundFacts</b><span>Mutual fund assistant</span></div></div>
+  <button class="item" id="new">✨ New chat</button>
+  <div class="stats"><div><b>15</b>HDFC funds</div><div><b>18</b>Public sources</div></div>
+  <div class="title">EXPLORE A TOPIC</div>
+  <div id="topics" style="display:flex;flex-direction:column;gap:.4rem"></div>
+  <div class="title">WHY TRUST IT</div>
+  <div class="note">✓ Answers only from public sources<br>✓ A source link with every answer<br>✓ Shows when sources were last updated<br>✓ Never gives investment advice</div>
+</aside>
+<div class="scrim" id="scrim"></div>
+<main class="main">
+  <button class="menu" id="menu" aria-label="Open topics">☰</button>
+  <div class="scroll" id="scroll"><div class="column" id="chat" aria-live="polite"></div></div>
+  <div class="bar"><form id="form">
+    <textarea id="input" rows="1" maxlength="500" placeholder="Ask about a fund..." aria-label="Your question"></textarea>
+    <button class="send" id="send" aria-label="Send" disabled>↑</button>
+  </form></div>
+</main>
+<script>
+const TOPICS = [
+  ["💸 Expense ratio", "What is the expense ratio of HDFC Large Cap Fund?"],
+  ["🚪 Exit load", "What is the exit load of HDFC Mid Cap Fund?"],
+  ["📅 Minimum SIP", "What is the minimum SIP of HDFC ELSS Tax Saver?"],
+  ["🔒 ELSS lock-in", "What is the lock-in for HDFC ELSS Tax Saver?"],
+  ["🌡️ Riskometer", "What is the riskometer rating of HDFC Small Cap Fund?"],
+  ["📊 Benchmark", "What is the benchmark of HDFC Flexi Cap?"],
+  ["🏆 Top holdings", "What are the top holdings of HDFC Large Cap Fund?"],
+  ["👤 Fund manager", "Who is the fund manager of HDFC Mid Cap Fund?"],
+  ["🏢 About HDFC Mutual Fund", "Who is the CEO of HDFC Mutual Fund?"],
+];
+const SUGGESTIONS = [
+  "🔍 What is the lock-in for HDFC ELSS Tax Saver?",
+  "％ What is the exit load of HDFC Flexi Cap?",
+  "🛡️ Should I invest in HDFC Mid Cap right now?",
+];
+const LABELS = { answer:"✓ Verified from source", refusal:"🛡 Facts-only policy",
+  not_found:"Not in sources", error:"Temporarily unavailable" };
+const NOTICE = "<b>Facts-only. No investment advice.</b> Answers come from public mutual fund pages with a source link. It does not recommend buying, selling, or holding any scheme.";
+
+const chat = document.getElementById("chat"), scroller = document.getElementById("scroll");
+const input = document.getElementById("input"), send = document.getElementById("send");
+let lastScheme = null, busy = false;
+
+const el = (tag, cls, text) => { const n = document.createElement(tag);
+  if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+const bottom = () => { scroller.scrollTop = scroller.scrollHeight; };
+const motion = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function welcome() {
+  chat.replaceChildren();
+  lastScheme = null;
+  const hero = el("div", "hero");
+  hero.append(el("h1", "", "Mutual Fund Facts Assistant"),
+    el("p", "", "Ask anything factual about selected HDFC Mutual Fund schemes."));
+  SUGGESTIONS.forEach(s => { const b = el("button", "suggest", s);
+    b.onclick = () => ask(s.replace(/^\S+\s/, "")); hero.append(b); });
+  const banner = el("div", "banner"); banner.innerHTML = NOTICE;
+  chat.append(hero, banner);
+  input.focus();
+}
+
+async function typeOut(node, text) {
+  if (!motion) { node.textContent = text; return; }
+  for (const word of text.split(" ")) {
+    node.textContent += (node.textContent ? " " : "") + word;
+    bottom();
+    await new Promise(r => setTimeout(r, 14));
+  }
+}
+
+function addDetails(box, data) {
+  if (data.citation_url && /^https:\/\//.test(data.citation_url)) {
+    const row = el("div", "source"), a = el("a", "", data.citation_url);
+    a.href = data.citation_url; a.target = "_blank"; a.rel = "noopener";
+    row.append("🔗 ", a); box.append(row);
+  }
+  if (data.last_updated) box.append(el("div", "updated", "Last updated from sources: " + data.last_updated));
+}
+
+async function ask(question) {
+  question = question.trim();
+  if (!question || busy) return;
+  busy = true; send.disabled = true; document.body.classList.remove("open");
+  const hero = chat.querySelector(".hero"); if (hero) hero.remove();
+  chat.append(el("div", "msg user", question));
+  input.value = ""; input.style.height = "auto";
+  const box = el("div", "msg");
+  box.innerHTML = '<div class="dots" role="status" aria-label="Checking sources"><span></span><span></span><span></span></div>';
+  chat.append(box); bottom();
+  const slow = setTimeout(() => { box.append(el("div", "wake", "Waking up the server. The first question can take up to a minute.")); bottom(); }, 6000);
+
+  let data;
+  try {
+    const r = await fetch("/api/chat", { method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ question, last_scheme: lastScheme }) });
+    const body = await r.json().catch(() => ({}));
+    data = r.ok ? body : { type:"error", text: body.error || "Something went wrong. Please try again." };
+  } catch {
+    data = { type:"error", text:"Could not reach the assistant. Please try again in a minute." };
+  }
+  clearTimeout(slow);
+  if (data.last_scheme) lastScheme = data.last_scheme;
+  box.replaceChildren(el("div", "label " + data.type, LABELS[data.type] || LABELS.answer));
+  const text = el("div", "text"); box.append(text);
+  await typeOut(text, data.text);
+  addDetails(box, data); bottom();
+  busy = false; send.disabled = !input.value.trim(); input.focus();
+}
+
+TOPICS.forEach(([label, q]) => { const b = el("button", "item", label);
+  b.onclick = () => ask(q); document.getElementById("topics").append(b); });
+document.getElementById("new").onclick = () => { if (!busy) { welcome(); document.body.classList.remove("open"); } };
+document.getElementById("menu").onclick = () => document.body.classList.add("open");
+document.getElementById("scrim").onclick = () => document.body.classList.remove("open");
+document.getElementById("form").onsubmit = e => { e.preventDefault(); ask(input.value); };
+input.oninput = () => { send.disabled = busy || !input.value.trim();
+  input.style.height = "auto"; input.style.height = input.scrollHeight + "px"; };
+input.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(input.value); } };
+welcome();
+</script>
+</body>
+</html>
