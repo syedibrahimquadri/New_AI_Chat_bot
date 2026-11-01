@@ -21,8 +21,6 @@ data/retrieval_logs/*
 !data/retrieval_logs/.gitkeep
 
 # Vector DB
-chroma/*
-!chroma/.gitkeep
 
 # IDE / OS
 .idea/
