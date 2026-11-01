@@ -1,0 +1,36 @@
+sources_file: data/sources.csv
+
+scrape:
+  timeout: 30
+  retries: 3
+  backoff: 1.5
+
+load:
+  min_chars: 80
+
+paths:
+  raw: data/raw
+  cleaned: data/cleaned
+  chunks: data/chunks
+  chroma: chroma
+  retrieval_logs: data/retrieval_logs
+
+chunking:
+  strategy: section_recursive
+  chunk_size: 1500
+  chunk_overlap: 200
+
+embedding:
+  model_name: sentence-transformers/all-MiniLM-L6-v2
+
+vector_db:
+  provider: chromadb
+  collection: mf_faq
+  distance: cosine
+
+retrieval:
+  top_k: 4
+
+generation:
+  max_sentences: 3
+  require_citation: true

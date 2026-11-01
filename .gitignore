@@ -1,0 +1,35 @@
+# Secrets
+.env
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Pipeline artifacts (regenerated locally)
+data/raw/*
+data/cleaned/*
+data/chunks/*
+data/retrieval_logs/*
+!data/raw/.gitkeep
+!data/cleaned/.gitkeep
+!data/chunks/.gitkeep
+!data/retrieval_logs/.gitkeep
+
+# Vector DB
+chroma/*
+!chroma/.gitkeep
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local only
+stitch_mutual_fund_faq_assistant/
+data/embeddings/
