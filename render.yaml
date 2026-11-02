@@ -3,7 +3,7 @@ services:
     name: fundfacts-api
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements-api.txt
+    buildCommand: pip install -r requirements-api.txt && python -c "from src.ingest.embed import OnnxMiniLM as M; M().encode(['warm'])"
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:

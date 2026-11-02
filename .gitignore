@@ -31,3 +31,4 @@ Thumbs.db
 # Local only
 stitch_mutual_fund_faq_assistant/
 data/embeddings/
+.models/

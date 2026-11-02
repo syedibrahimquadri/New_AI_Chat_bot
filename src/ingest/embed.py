@@ -8,16 +8,33 @@ from typing import Any
 
 import chromadb
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
-_model: SentenceTransformer | None = None
+_model: Any = None
 
 
-def get_model(settings: dict[str, Any]) -> SentenceTransformer:
+class OnnxMiniLM:
+    """all-MiniLM-L6-v2 on ONNX Runtime: same model, far less memory than PyTorch."""
+
+    def __init__(self) -> None:
+        from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
+
+        self.embedder = ONNXMiniLM_L6_V2()
+        self.embedder.DOWNLOAD_PATH = Path(__file__).resolve().parents[2] / ".models"
+
+    def encode(self, texts: list[str], **_: Any) -> np.ndarray:
+        return np.array(self.embedder(texts), dtype=np.float32)
+
+
+def get_model(settings: dict[str, Any]) -> Any:
     """Single loader so ingestion and retrieval always share one model."""
     global _model
     if _model is None:
-        _model = SentenceTransformer(settings["embedding"]["model_name"])
+        try:
+            from sentence_transformers import SentenceTransformer
+
+            _model = SentenceTransformer(settings["embedding"]["model_name"])
+        except ImportError:  # hosted API installs without PyTorch
+            _model = OnnxMiniLM()
     return _model
 
 
