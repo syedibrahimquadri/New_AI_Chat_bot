@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import threading
 from pathlib import Path
 
@@ -23,11 +22,11 @@ ROOT = Path(__file__).resolve().parents[1]
 settings = load_settings()
 
 app = FastAPI(title="FundFacts API")
-origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
-if origins:
-    app.add_middleware(
-        CORSMiddleware, allow_origins=origins, allow_methods=["POST"], allow_headers=["*"]
-    )
+# Public read-only API; the Vercel page calls it directly because proxies time out
+# while a free server wakes up.
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"]
+)
 
 
 class ChatRequest(BaseModel):

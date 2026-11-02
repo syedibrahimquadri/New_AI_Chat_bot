@@ -109,6 +109,8 @@ const SUGGESTIONS = [
   "％ What is the exit load of HDFC Flexi Cap?",
   "🛡️ Should I invest in HDFC Mid Cap right now?",
 ];
+const API = location.hostname.endsWith("vercel.app") ? "https://fundfacts-api-heax.onrender.com" : "";
+const WAKE_LIMIT_MS = 240000;
 const LABELS = { answer:"✓ Verified from source", refusal:"🛡 Facts-only policy",
   not_found:"Not in sources", error:"Temporarily unavailable" };
 const NOTICE = "<b>Facts-only. No investment advice.</b> Answers come from public mutual fund pages with a source link. It does not recommend buying, selling, or holding any scheme.";
@@ -163,16 +165,22 @@ async function ask(question) {
   const box = el("div", "msg");
   box.innerHTML = '<div class="dots" role="status" aria-label="Checking sources"><span></span><span></span><span></span></div>';
   chat.append(box); bottom();
-  const slow = setTimeout(() => { box.append(el("div", "wake", "Waking up the server. The first question can take up to a minute.")); bottom(); }, 6000);
+  const slow = setTimeout(() => { box.append(el("div", "wake", "Waking up the server. After a quiet period this can take 2 to 3 minutes.")); bottom(); }, 6000);
 
   let data;
-  try {
-    const r = await fetch("/api/chat", { method:"POST", headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ question, last_scheme: lastScheme }) });
-    const body = await r.json().catch(() => ({}));
-    data = r.ok ? body : { type:"error", text: body.error || "Something went wrong. Please try again." };
-  } catch {
-    data = { type:"error", text:"Could not reach the assistant. Please try again in a minute." };
+  const started = Date.now();
+  while (true) {
+    try {
+      const r = await fetch(API + "/api/chat", { method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ question, last_scheme: lastScheme }) });
+      const body = await r.json().catch(() => null);
+      if (body) { data = r.ok ? body : { type:"error", text: body.error || "Something went wrong. Please try again." }; break; }
+    } catch { /* server still waking: retry below */ }
+    if (Date.now() - started > WAKE_LIMIT_MS) {
+      data = { type:"error", text:"The assistant could not start. Please try again in a minute." };
+      break;
+    }
+    await new Promise(r => setTimeout(r, 5000));
   }
   clearTimeout(slow);
   if (data.last_scheme) lastScheme = data.last_scheme;
@@ -193,6 +201,7 @@ input.oninput = () => { send.disabled = busy || !input.value.trim();
   input.style.height = "auto"; input.style.height = input.scrollHeight + "px"; };
 input.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(input.value); } };
 welcome();
+fetch(API + "/api/health").catch(() => {});  // start waking before the first question
 </script>
 </body>
 </html>
