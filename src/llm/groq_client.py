@@ -7,7 +7,7 @@ import groq
 from src.llm.base import LLMError
 
 
-BACKUP_MODELS = ("openai/gpt-oss-20b", "openai/gpt-oss-120b")
+BACKUP_MODELS = ("openai/gpt-oss-20b", "openai/gpt-oss-120b", "openai/gpt-oss-safeguard-20b")
 
 
 class GroqClient:
@@ -21,7 +21,7 @@ class GroqClient:
         self.client = groq.Groq(api_key=key, timeout=30, max_retries=1)
 
     def complete(self, system: str, user: str) -> str:
-        last_error: groq.RateLimitError | None = None
+        last_error: groq.APIStatusError | None = None
         # Each model has its own quota, so a backup keeps answers instant under load.
         for model in dict.fromkeys((self.model, *BACKUP_MODELS)):
             try:
@@ -43,6 +43,10 @@ class GroqClient:
                         "https://console.groq.com/docs/models."
                     ) from exc
             except groq.APIError as exc:
+                # 413: the prompt is over this model's per-minute size; another model may fit it.
+                if getattr(exc, "status_code", None) == 413:
+                    last_error = exc
+                    continue
                 raise LLMError(f"The Groq request failed, so no answer was generated: {exc}") from exc
         raise LLMError(
             "The assistant is busy right now (429 rate limit). Please try again in a minute."
