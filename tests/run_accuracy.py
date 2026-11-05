@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import time
@@ -13,6 +14,9 @@ from bs4 import BeautifulSoup
 from src.generate.answer import answer_question
 from src.llm.base import LLMError
 from src.utils.config import load_settings
+
+# The test shares the live app's Groq key; raise ACCURACY_DELAY to leave it headroom.
+DELAY = float(os.environ.get("ACCURACY_DELAY", "4"))
 
 TOPICS = [
     ("expense ratio", "What is the expense ratio of {n}?", lambda d, m: str(d["expense_ratio"])),
@@ -72,7 +76,7 @@ def main() -> int:
         if expected.lower().replace(",", "") not in got.lower().replace(",", ""):
             failures.append((question, expected, got))
             print(f"FAIL {question}\n     want {expected!r}, got: {got[:150]}", flush=True)
-        time.sleep(4)
+        time.sleep(DELAY)
 
     for question, expected in AMC:
         grade(question, expected)

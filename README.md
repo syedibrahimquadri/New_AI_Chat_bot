@@ -53,6 +53,11 @@ See `Doc/implementation.md` for the phase-wise plan. Artifacts land in `data/raw
 - hdfcfund.com blocks automated requests, so AMC documents are not in the corpus
 - Statement questions rely on SEBI's general CAS page; there are no step-by-step capital-gains download instructions
 - Guardrails are rule-based and can occasionally refuse a harmless question that uses a word like "buy"
+- Only Direct Growth plans are covered; Regular plan questions get a note saying so
+- No source explains direct plans, index funds or step-by-step capital-gains downloads, so those questions get "I could not find that in my sources"
+- A question about two funds is answered for the first, with a prompt to ask about the second, so each answer keeps one source link
+- Render's free plan sleeps after 15 idle minutes, so the first answer after a pause can take about 50 seconds
+- The tests use the same Groq key as the live app; run `ACCURACY_DELAY=12 python -m tests.run_accuracy` to leave headroom for live users
 - Only Groq is implemented; other LLM providers would need a client in `src/llm/`
 
 ## Disclaimer
@@ -79,7 +84,7 @@ Every answer is at most 3 sentences, cites one official source link, and ends wi
 
 ```bash
 python -m tests.run_guardrails   # refusals, citations and format
-python -m tests.run_accuracy     # 144 fact questions; about 15 minutes and uses Groq quota
+python -m tests.run_accuracy     # 144 fact questions; about 15 minutes and uses Groq quota (set ACCURACY_DELAY to slow it)
 ```
 
 Scraped data and the vector index are not committed. Run the pipeline after cloning.
