@@ -17,6 +17,10 @@ from src.utils.config import load_settings
 
 # The test shares the live app's Groq key; raise ACCURACY_DELAY to leave it headroom.
 DELAY = float(os.environ.get("ACCURACY_DELAY", "4"))
+# Run a slice of the 144 questions, e.g. ACCURACY_START=30 ACCURACY_COUNT=30, so one run
+# never uses up the daily token quota the live app also depends on.
+START = int(os.environ.get("ACCURACY_START", "0"))
+COUNT = int(os.environ.get("ACCURACY_COUNT", "0")) or 10**6
 
 TOPICS = [
     ("expense ratio", "What is the expense ratio of {n}?", lambda d, m: str(d["expense_ratio"])),
@@ -59,6 +63,9 @@ def ask(question: str, settings: dict) -> str:
         except LLMError as exc:
             if "429" not in str(exc) and "rate" not in str(exc).lower():
                 raise
+            if "tokens per day" in str(exc.__cause__):
+                # Waiting will not help, and retrying keeps eating what the live app has left.
+                raise SystemExit("Daily token limit reached; stopping. Resume this batch tomorrow.")
             time.sleep(30)
     raise SystemExit("Rate limit did not clear.")
 
@@ -67,10 +74,13 @@ def main() -> int:
     settings = load_settings()
     raw = Path(settings["paths"]["raw"])
     cleaned = Path(settings["paths"]["cleaned"])
-    failures, total = [], 0
+    failures, total, index = [], 0, -1
 
     def grade(question: str, expected: str) -> None:
-        nonlocal total
+        nonlocal total, index
+        index += 1
+        if not START <= index < START + COUNT:
+            return
         total += 1
         got = ask(question, settings)
         if expected.lower().replace(",", "") not in got.lower().replace(",", ""):
