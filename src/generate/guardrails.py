@@ -32,6 +32,12 @@ _OTHER_AMC = re.compile(
     r"quant|motilal|franklin|canara|edelweiss|groww (fund|nifty|elss))\b",
     re.I,
 )
+# "What is a riskometer?" asks about the concept, which the SEBI pages answer.
+_DEFINITION = re.compile(
+    r"^\s*(what\s+(is|are)\s+(an?\s+)?(?!the\b)[\w-]+(\s+[\w-]+)?\s*\??\s*$"
+    r"|what\s+does\s+.+\s+mean|(explain|define)\b|meaning\s+of\b|how\s+does\s+.+\s+work)",
+    re.I,
+)
 _NEEDS_SCHEME = re.compile(
     r"\b(expense ratio|ter|exit load|minimum sip|min(imum)? (sip|investment|lumpsum)|sip amount|"
     r"lock-?in|riskometer|risk (rating|level)|benchmark|fund manager|nav|fund size|holdings?|stamp duty)\b",
@@ -77,6 +83,6 @@ def classify(question: str, schemes_named: list[str]) -> str:
         return "performance"
     if _OTHER_AMC.search(question):
         return "out_of_scope"
-    if _NEEDS_SCHEME.search(question) and not schemes_named:
+    if _NEEDS_SCHEME.search(question) and not schemes_named and not _DEFINITION.search(question):
         return "needs_scheme"
     return "factual"
