@@ -8,6 +8,7 @@ import re
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from src.ingest.sources import allowed_sources, load_sources
 from src.generate.guardrails import AMC_URL, EDUCATION_URL, MESSAGES, classify
 from src.generate.prompts import SYSTEM_PROMPT, build_user_prompt
 from src.llm.base import LLMClient, LLMError, get_client
@@ -61,12 +62,40 @@ def _parse(raw: str) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
+# "What sources do you use?" is about the assistant, so no page answers it.
+_SOURCES_Q = re.compile(
+    r"\b(what|which|list|show|name|tell|how many|give)\b.*\b(sources|links|urls|websites|pages|documents|references)\b"
+    r"|\b(your|you)\b.*\b(sources?|links?|urls?|websites?|data|corpus|trained)\b",
+    re.I,
+)
+SOURCES_LIST_URL = (
+    "https://github.com/syedibrahimquadri/New_AI_Chat_bot/blob/main/data/sources.csv"
+)
+
+
+def _sources_answer(settings: dict[str, Any]) -> Answer:
+    sources = allowed_sources(load_sources(settings["sources_file"]))
+    groww = [s for s in sources if "groww.in" in s.url]
+    sebi = [s for s in sources if "sebi.gov.in" in s.url]
+    amfi = [s for s in sources if "amfiindia.com" in s.url]
+    funds = ", ".join(s.scheme for s in groww if s.scheme and "AMC" not in s.title)
+    text = (
+        f"I answer only from {len(sources)} public pages: {len(groww)} HDFC Mutual Fund pages on Groww, "
+        f"{len(sebi)} SEBI investor pages and {len(amfi)} AMFI pages. "
+        f"The schemes covered are {funds}. "
+        "The SEBI and AMFI pages cover the riskometer, exit load, ELSS, KYC and account statements."
+    )
+    return Answer("answer", text, citation_url=SOURCES_LIST_URL)
+
+
 def answer_question(
     question: str, settings: dict[str, Any], llm: LLMClient | None = None
 ) -> Answer:
     question = question.strip()
     schemes = find_schemes(question, settings)
     intent = classify(question, schemes)
+    if intent == "factual" and not schemes and _SOURCES_Q.search(question):
+        return _sources_answer(settings)
 
     if intent != "factual":
         if intent == "pii":
