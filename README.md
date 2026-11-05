@@ -47,13 +47,21 @@ See `Doc/implementation.md` for the phase-wise plan. Artifacts land in `data/raw
 
 ## Known limits
 
-- Small corpus: 18 public pages in `data/sources.csv`, HDFC schemes on Groww plus two SEBI investor pages
+- Small corpus: 24 public pages in `data/sources.csv`: HDFC schemes on Groww, SEBI investor pages (CAS, riskometer, exit load, ELSS, KYC), and AMFI investor and KYC pages. Only AMC, SEBI and AMFI pages are allowed, so registrar (RTA) pages such as KFintech and CAMS are left out
 - No buy/sell advice, no return calculations, no PII handling
 - Facts come from data embedded in Groww pages, so a Groww page change may require a loader update
 - hdfcfund.com blocks automated requests, so AMC documents are not in the corpus
 - Statement questions rely on SEBI's general CAS page; there are no step-by-step capital-gains download instructions
 - Guardrails are rule-based and can occasionally refuse a harmless question that uses a word like "buy"
 - Only Groq is implemented; other LLM providers would need a client in `src/llm/`
+
+## Disclaimer
+
+Shown in the UI:
+
+> Facts-only. No investment advice.
+
+Every answer is at most 3 sentences, cites one official source link, and ends with "Last updated from sources: <date>". Questions asking for advice, recommendations or return comparisons get a polite refusal with an educational link, and messages containing PII (PAN, Aadhaar, account numbers, OTPs, emails, phone numbers) are rejected and not stored.
 
 ## Docs
 
