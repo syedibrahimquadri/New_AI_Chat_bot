@@ -9,13 +9,36 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from src.ingest.sources import allowed_sources, load_sources
-from src.generate.guardrails import AMC_URL, EDUCATION_URL, MESSAGES, classify
+from src.generate.guardrails import AMC_URL, EDUCATION_URL, MESSAGES, classify, is_definition
 from src.generate.prompts import SYSTEM_PROMPT, build_user_prompt
 from src.llm.base import LLMClient, LLMError, get_client
+from src.ingest.embed import get_collection
 from src.retrieve.retriever import find_schemes, retrieve
 from src.utils.config import load_settings
 
-NOT_FOUND = "I could not find that in my sources."
+NOT_FOUND = (
+    "I could not find that in my sources. I can share facts such as expense ratio, exit load, "
+    "minimum SIP, lock-in, riskometer, benchmark or fund manager for selected HDFC Mutual Fund "
+    "schemes, and explain terms like ELSS, exit load, riskometer, KYC and account statements."
+)
+GREETING = (
+    "Hi! I answer factual questions about selected HDFC Mutual Fund schemes, such as expense ratio, "
+    "exit load, minimum SIP, ELSS lock-in, riskometer and benchmark. "
+    "Try asking \"What is the exit load of HDFC Flexi Cap?\"; I do not give investment advice."
+)
+THANKS = "You're welcome! Ask me any other factual question about HDFC Mutual Fund schemes."
+REGULAR_PLAN = (
+    "My sources cover only the Direct Growth plans of HDFC schemes, not Regular plans. "
+    "Ask about the Direct plan, or check the AMC's official documents for Regular plan figures."
+)
+_GREETING = re.compile(
+    r"^\s*(hi+|hello|hey|hii+|good\s+(morning|afternoon|evening)|namaste|help|start|"
+    r"(hi|hello|hey)?[\s,!]*(what|how)\s+(can|do)\s+you\s+(do|help)\b.*|who\s+are\s+you\??|"
+    r"what\s+are\s+you\??)[\s!.?]*$",
+    re.I,
+)
+_THANKS = re.compile(r"^\s*(thanks?|thank\s+you|thx|ok(ay)?|great|cool|bye)\b[\s\w!.]*$", re.I)
+_REGULAR = re.compile(r"\bregular\s+(plan|option|growth)?\b", re.I)
 CAS_URL = "https://investor.sebi.gov.in/consolidated_account_statement.html"
 _CAPITAL_GAINS = re.compile(r"\bcapital[- ]gains?\b", re.I)
 _AMC_TOPIC = re.compile(
@@ -73,6 +96,13 @@ SOURCES_LIST_URL = (
 )
 
 
+def _corpus_date(settings: dict[str, Any]) -> str | None:
+    """Latest scrape date in the index, for replies that are not built from one chunk."""
+    metas = get_collection(settings).get(include=["metadatas"])["metadatas"]
+    dates = [m["scraped_at"] for m in metas if m.get("scraped_at")]
+    return max(dates) if dates else None
+
+
 def _sources_answer(settings: dict[str, Any]) -> Answer:
     sources = allowed_sources(load_sources(settings["sources_file"]))
     groww = [s for s in sources if "groww.in" in s.url]
@@ -85,7 +115,7 @@ def _sources_answer(settings: dict[str, Any]) -> Answer:
         f"The schemes covered are {funds}. "
         "The SEBI and AMFI pages cover the riskometer, exit load, ELSS, KYC and account statements."
     )
-    return Answer("answer", text, citation_url=SOURCES_LIST_URL)
+    return Answer("answer", text, SOURCES_LIST_URL, _corpus_date(settings))
 
 
 def answer_question(
@@ -94,8 +124,15 @@ def answer_question(
     question = question.strip()
     schemes = find_schemes(question, settings)
     intent = classify(question, schemes)
-    if intent == "factual" and not schemes and _SOURCES_Q.search(question):
-        return _sources_answer(settings)
+    if intent == "factual" and not schemes:
+        if _SOURCES_Q.search(question):
+            return _sources_answer(settings)
+        if _GREETING.match(question):
+            return Answer("answer", GREETING, AMC_URL, _corpus_date(settings))
+        if _THANKS.match(question):
+            return Answer("answer", THANKS, AMC_URL, _corpus_date(settings))
+    if intent == "factual" and _REGULAR.search(question):
+        return Answer("not_found", REGULAR_PLAN, citation_url=_scheme_url(schemes[0] if schemes else None, settings))
 
     if intent != "factual":
         if intent == "pii":
@@ -116,14 +153,39 @@ def answer_question(
     scheme = schemes[0] if schemes else None
     if not scheme and _AMC_TOPIC.search(question):
         scheme = "HDFC MF"
-    # AMC facts are many short chunks, so read all of them for these questions.
-    # A fund or the AMC has only a few short chunks, so read them all rather than
-    # risk ranking the right one out of the top results.
-    hits = retrieve(question, settings, scheme=scheme, top_k=14 if scheme else None)
-    ids = [h["chunk_id"] for h in hits]
-    if not hits:
+    # "What is ELSS?" names a term, not the HDFC ELSS fund: try the SEBI/AMFI pages first.
+    definition = is_definition(question) and (not scheme or _names_term_only(question, scheme))
+    filters = ["General", None] if definition else [scheme]
+    result = None
+    for f in filters:
+        # A fund or the AMC has only a few short chunks, so read them all rather than
+        # risk ranking the right one out of the top results.
+        hits = retrieve(question, settings, scheme=f, top_k=14 if f else None)
+        if not hits:
+            continue
+        # With two funds named, only the first fund's chunks are retrieved, so say so;
+        # otherwise the model sees the second fund missing and reports nothing found.
+        asked = f"{question} (Answer only for {schemes[0]}.)" if len(schemes) > 1 and f else question
+        result = _generate(asked, hits, settings, llm)
+        if result.type == "answer":
+            break
+    if result is None:
         return Answer("not_found", NOT_FOUND, citation_url=AMC_URL)
+    if result.type == "answer" and len(schemes) > 1:
+        # One link per answer, so a second fund is answered in its own question.
+        result.text += f" Ask about {schemes[1]} separately for its figure."
+    return result
 
+
+def _names_term_only(question: str, scheme: str) -> bool:
+    """True when the scheme matched only on a generic word such as "ELSS" or "liquid"."""
+    return not re.search(r"\b(hdfc|fund|scheme)\b", question, re.I)
+
+
+def _generate(
+    question: str, hits: list[dict[str, Any]], settings: dict[str, Any], llm: LLMClient | None
+) -> Answer:
+    ids = [h["chunk_id"] for h in hits]
     client = llm or get_client(settings)
     max_sentences = int(settings["generation"]["max_sentences"])
     raw = client.complete(

@@ -8,6 +8,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from src.ingest.sources import allowed_sources, load_sources
+
 
 def _split_sized(text: str, size: int, overlap: int) -> list[str]:
     """Fixed-size split that prefers to break at a newline or sentence end."""
@@ -111,9 +113,13 @@ def chunk(settings: dict[str, Any]) -> dict[str, int]:
     for old in out_dir.glob("*.jsonl"):
         old.unlink()
 
+    # Cleaned files outlive their row in sources.csv, so index only the current sources.
+    current = {s.url for s in allowed_sources(load_sources(settings["sources_file"]))}
     counts: dict[str, int] = {}
     for meta_path in sorted(in_dir.glob("*.meta.json")):
         meta = json.loads(meta_path.read_text("utf-8"))
+        if meta.get("url", meta.get("source_url")) not in current:
+            continue
         text = (in_dir / f"{meta['doc_id']}.txt").read_text("utf-8")
         if cfg["strategy"] == "section_recursive":
             sections = _sections(text)

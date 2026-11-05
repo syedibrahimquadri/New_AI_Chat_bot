@@ -35,9 +35,15 @@ _OTHER_AMC = re.compile(
 # "What is a riskometer?" asks about the concept, which the SEBI pages answer.
 _DEFINITION = re.compile(
     r"^\s*(what\s+(is|are)\s+(an?\s+)?(?!the\b)[\w-]+(\s+[\w-]+)?\s*\??\s*$"
-    r"|what\s+does\s+.+\s+mean|(explain|define)\b|meaning\s+of\b|how\s+does\s+.+\s+work)",
+    r"|what\s+does\s+.+\s+mean|(explain|define)\b|meaning\s+of\b|how\s+does\s+.+\s+work"
+    r"|.*\bmeans?\s*\??\s*$|.*\b(on|in|for)\s+(mutual\s+funds?|mfs?|elss\s+funds?)\b)",
     re.I,
 )
+
+
+def is_definition(question: str) -> bool:
+    """True when the question asks what a term means rather than a fund's figure."""
+    return bool(_DEFINITION.search(question))
 _NEEDS_SCHEME = re.compile(
     r"\b(expense ratio|ter|exit load|minimum sip|min(imum)? (sip|investment|lumpsum)|sip amount|"
     r"lock-?in|riskometer|risk (rating|level)|benchmark|fund manager|nav|fund size|holdings?|stamp duty)\b",

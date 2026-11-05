@@ -23,6 +23,11 @@ def _scheme_aliases(settings: dict[str, Any]) -> dict[str, str]:
             if scheme.startswith("HDFC ") and scheme != "HDFC MF":
                 aliases[scheme.removeprefix("HDFC ").lower()] = scheme
                 aliases[scheme.removesuffix(" Index").removeprefix("HDFC ").lower()] = scheme
+    # "largecap", "mid-cap" and "smallcap" name the same funds.
+    for alias, scheme in list(aliases.items()):
+        if " cap" in alias:
+            aliases[alias.replace(" cap", "cap")] = scheme
+            aliases[alias.replace(" cap", "-cap")] = scheme
     return aliases
 
 
